@@ -75,37 +75,22 @@ export default function OnboardPage() {
     if (!userId) return
     setLoading(true)
     try {
-      const supabase = createClient()
-
-      // Update profile role to restaurant_owner
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .update({ role: "restaurant_owner" })
-        .eq("id", userId)
-
-      if (profileError) throw profileError
-
-      // Create restaurant
-      const { data: restaurant, error: restError } = await supabase
-        .from("restaurants")
-        .insert({
-          owner_user_id: userId,
+      const res = await fetch("/api/onboard", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId,
           name: data.name,
           slug: data.slug,
           description: data.description || null,
           phone: data.phone || null,
           email: data.email || null,
-        })
-        .select()
-        .single()
-
-      if (restError) {
-        if (restError.code === "23505") throw new Error("That URL is already taken. Choose a different one.")
-        throw restError
-      }
-
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || "Failed to create restaurant")
       toast.success("Your restaurant is ready!")
-      router.push(`/${restaurant.slug}/admin`)
+      router.push(`/${json.slug}/admin`)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to create restaurant")
     } finally {
