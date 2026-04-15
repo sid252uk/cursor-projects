@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { ShoppingBag, ChevronRight } from "lucide-react"
+import { ShoppingBag, ChevronRight, Loader2 } from "lucide-react"
 
 const step1Schema = z.object({
   first_name: z.string().min(1, "Required"),
@@ -43,7 +43,6 @@ export default function OnboardPage() {
   const form1 = useForm<Step1Data>({ resolver: zodResolver(step1Schema) })
   const form2 = useForm<Step2Data>({ resolver: zodResolver(step2Schema) })
 
-  // Auto-generate slug from restaurant name
   const watchName = form2.watch("name")
   const handleNameBlur = () => {
     if (!form2.getValues("slug") && watchName) {
@@ -65,7 +64,12 @@ export default function OnboardPage() {
       setUserId(authData.user.id)
       setStep(2)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to create account")
+      const msg = err instanceof Error ? err.message : "Failed to create account"
+      if (msg === "Failed to fetch") {
+        toast.error("Cannot connect to server. Please check your internet connection and try again.")
+      } else {
+        toast.error(msg)
+      }
     } finally {
       setLoading(false)
     }
@@ -149,8 +153,22 @@ export default function OnboardPage() {
                   <Input type="password" {...form1.register("password")} />
                   {form1.formState.errors.password && <p className="text-xs text-destructive">{form1.formState.errors.password.message}</p>}
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Creating account…" : "Continue"}
+                <Button
+                  type="submit"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 text-base"
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Creating account…
+                    </span>
+                  ) : (
+                    <span className="flex items-center justify-center gap-2">
+                      Continue
+                      <ChevronRight className="h-4 w-4" />
+                    </span>
+                  )}
                 </Button>
                 <p className="text-xs text-center text-muted-foreground">
                   Already have an account?{" "}
@@ -196,8 +214,17 @@ export default function OnboardPage() {
                     <Input type="email" {...form2.register("email")} />
                   </div>
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Creating restaurant…" : "Create restaurant"}
+                <Button
+                  type="submit"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 text-base"
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Creating restaurant…
+                    </span>
+                  ) : "Create restaurant"}
                 </Button>
               </CardContent>
             </form>
