@@ -7,7 +7,6 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { toast } from "sonner"
 import { z } from "zod"
-import { createClient } from "@/lib/supabase/client"
 import { slugify } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -53,23 +52,22 @@ export default function OnboardPage() {
   const onStep1Submit = async (data: Step1Data) => {
     setLoading(true)
     try {
-      const supabase = createClient()
-      const { data: authData, error } = await supabase.auth.signUp({
-        email: data.email,
-        password: data.password,
-        options: { data: { first_name: data.first_name, last_name: data.last_name } },
+      const res = await fetch("/api/onboard/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          first_name: data.first_name,
+          last_name: data.last_name,
+          email: data.email,
+          password: data.password,
+        }),
       })
-      if (error) throw error
-      if (!authData.user) throw new Error("No user returned")
-      setUserId(authData.user.id)
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || "Failed to create account")
+      setUserId(json.userId)
       setStep(2)
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to create account"
-      if (msg === "Failed to fetch") {
-        toast.error("Cannot connect to server. Please check your internet connection and try again.")
-      } else {
-        toast.error(msg)
-      }
+      toast.error(err instanceof Error ? err.message : "Failed to create account")
     } finally {
       setLoading(false)
     }
