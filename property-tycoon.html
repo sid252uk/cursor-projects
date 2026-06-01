@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Property Tycoon</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: linear-gradient(135deg, #0d1b2a 0%, #1a3a5c 50%, #2e6da4 100%);
+    min-height: 100vh;
+    color: #1a2e44;
+  }
+
+  #app { max-width: 1400px; margin: 0 auto; padding: 12px; }
+
+  /* HEADER */
+  .header {
+    background: rgba(255,255,255,0.95);
+    border-radius: 16px;
+    padding: 14px 20px;
+    margin-bottom: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .header-title {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: #1a2e44;
+    margin-right: 10px;
+    white-space: nowrap;
+  }
+
+  .stats-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    flex: 1;
+  }
+
+  .stat-chip {
+    background: linear-gradient(135deg, #e8f4fd, #d0e9f7);
+    border: 1px solid #90cdf4;
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .stat-chip span { color: #2563eb; }
+
+  .stat-chip.debt span { color: #dc2626; }
+  .stat-chip.income span { color: #16a34a; }
+
+  .next-month-btn {
+    background: linear-gradient(135deg, #16a34a, #15803d);
+    color: white;
+    border: none;
+    border-radius: 20px;
+    padding: 8px 18px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(22,163,74,0.4);
+  }
+
+  .next-month-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(22,163,74,0.5);
+  }
+
+  /* MAIN LAYOUT */
+  .main-layout {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 12px;
+  }
+
+  @media (max-width: 800px) {
+    .main-layout { grid-template-columns: 1fr; }
+  }
+
+  /* LEFT PANEL */
+  .left-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .panel {
+    background: rgba(255,255,255,0.95);
+    border-radius: 14px;
+    padding: 14px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+  }
+
+  .panel-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 10px;
+  }
+
+  /* CITY MAP */
+  .city-map {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px;
+  }
+
+  .region-cell {
+    background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+    border: 2px solid #93c5fd;
+    border-radius: 10px;
+    padding: 8px 4px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #1e40af;
+    user-select: none;
+  }
+
+  .region-cell:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(59,130,246,0.4);
+    background: linear-gradient(135deg, #bfdbfe, #93c5fd);
+  }
+
+  .region-cell.selected {
+    background: linear-gradient(135deg, #1d4ed8, #2563eb);
+    border-color: #1e40af;
+    color: white;
+    box-shadow: 0 4px 14px rgba(37,99,235,0.5);
+    transform: translateY(-2px);
+  }
+
+  .region-cell.booming { border-color: #f59e0b; }
+  .region-cell.developing { border-color: #8b5cf6; }
+  .region-cell.growing { border-color: #10b981; }
+
+  .region-cell.selected.booming,
+  .region-cell.selected.developing,
+  .region-cell.selected.growing { border-color: white; }
+
+  .region-emoji { font-size: 1.2rem; display: block; margin-bottom: 2px; }
+  .region-name { font-size: 0.62rem; line-height: 1.2; }
+
+  .region-info {
+    margin-top: 10px;
+    padding: 10px;
+    background: #f0f9ff;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    display: none;
+  }
+
+  .region-info.visible { display: block; }
+  .region-info-title { font-weight: 700; color: #1e40af; margin-bottom: 4px; }
+  .region-info-row { color: #475569; margin: 2px 0; }
+
+  /* EVENT LOG */
+  .event-log { max-height: 220px; overflow-y: auto; }
+
+  .event-entry {
+    padding: 6px 8px;
+    border-radius: 6px;
+    margin-bottom: 4px;
+    font-size: 0.75rem;
+    line-height: 1.4;
+  }
+
+  .event-entry.positive { background: #f0fdf4; color: #166534; border-left: 3px solid #16a34a; }
+  .event-entry.negative { background: #fef2f2; color: #991b1b; border-left: 3px solid #dc2626; }
+  .event-entry.neutral  { background: #eff6ff; color: #1e40af; border-left: 3px solid #3b82f6; }
+
+  /* RIGHT PANEL */
+  .right-panel { display: flex; flex-direction: column; gap: 12px; }
+
+  /* VIEW TABS */
+  .view-tabs {
+    display: flex;
+    gap: 6px;
+    background: rgba(255,255,255,0.95);
+    padding: 8px;
+    border-radius: 14px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+  }
+
+  .tab-btn {
+    flex: 1;
+    padding: 7px 10px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 600;
+    transition: all 0.2s;
+    background: #f1f5f9;
+    color: #64748b;
+  }
+
+  .tab-btn.active {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    color: white;
+    box-shadow: 0 2px 8px rgba(37,99,235,0.4);
+  }
+
+  .tab-btn:hover:not(.active) { background: #e2e8f0; color: #1e40af; }
+
+  /* PROPERTY GRID */
+  .property-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 10px;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #94a3b8;
+    font-size: 0.9rem;
+  }
+
+  .empty-state .icon { font-size: 2.5rem; margin-bottom: 8px; }
+
+  /* PROPERTY CARD */
+  .prop-card {
+    background: rgba(255,255,255,0.97);
+    border-radius: 12px;
+    padding: 14px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+    transition: all 0.2s;
+    border: 1px solid #e2e8f0;
+  }
+
+  .prop-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.18);
+  }
+
+  .prop-card.mine { border-color: #86efac; border-width: 2px; }
+
+  .prop-card-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .prop-emoji { font-size: 1.8rem; }
+
+  .prop-info { flex: 1; }
+
+  .prop-type {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #1a2e44;
+  }
+
+  .prop-region {
+    font-size: 0.72rem;
+    color: #64748b;
+    margin-top: 1px;
+  }
+
+  .prop-condition {
+    font-size: 0.8rem;
+    color: #f59e0b;
+    margin-top: 2px;
+  }
+
+  .prop-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px;
+    margin-bottom: 10px;
+  }
+
+  .prop-stat {
+    background: #f8fafc;
+    border-radius: 6px;
+    padding: 5px 7px;
+    font-size: 0.71rem;
+  }
+
+  .prop-stat-label { color: #94a3b8; font-size: 0.65rem; text-transform: uppercase; }
+  .prop-stat-value { color: #1a2e44; font-weight: 700; }
+
+  .prop-stat-value.green { color: #16a34a; }
+  .prop-stat-value.red { color: #dc2626; }
+  .prop-stat-value.blue { color: #2563eb; }
+
+  .prop-upgrade-badge {
+    font-size: 0.65rem;
+    background: #fef3c7;
+    color: #92400e;
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-weight: 600;
+  }
+
+  .prop-actions { display: flex; gap: 5px; flex-wrap: wrap; }
+
+  .btn {
+    padding: 5px 11px;
+    border: none;
+    border-radius: 7px;
+    cursor: pointer;
+    font-size: 0.72rem;
+    font-weight: 700;
+    transition: all 0.2s;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .btn:hover:not(:disabled) { transform: translateY(-1px); }
+
+  .btn-buy {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    color: white;
+    box-shadow: 0 1px 4px rgba(37,99,235,0.3);
+  }
+
+  .btn-buy:hover:not(:disabled) { box-shadow: 0 3px 10px rgba(37,99,235,0.5); }
+
+  .btn-mortgage {
+    background: linear-gradient(135deg, #7c3aed, #6d28d9);
+    color: white;
+    box-shadow: 0 1px 4px rgba(124,58,237,0.3);
+  }
+
+  .btn-mortgage:hover:not(:disabled) { box-shadow: 0 3px 10px rgba(124,58,237,0.5); }
+
+  .btn-sell {
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+    color: white;
+    box-shadow: 0 1px 4px rgba(220,38,38,0.3);
+  }
+
+  .btn-sell:hover:not(:disabled) { box-shadow: 0 3px 10px rgba(220,38,38,0.5); }
+
+  .btn-upgrade {
+    background: linear-gradient(135deg, #d97706, #b45309);
+    color: white;
+    box-shadow: 0 1px 4px rgba(217,119,6,0.3);
+  }
+
+  .btn-upgrade:hover:not(:disabled) { box-shadow: 0 3px 10px rgba(217,119,6,0.5); }
+
+  .btn:disabled {
+    background: #e2e8f0;
+    color: #94a3b8;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+  }
+
+  .btn-tooltip {
+    font-size: 0.65rem;
+    color: #94a3b8;
+    text-align: center;
+    margin-top: 3px;
+  }
+
+  /* Scrollable property area */
+  .properties-container {
+    background: rgba(255,255,255,0.6);
+    border-radius: 14px;
+    padding: 12px;
+    max-height: calc(100vh - 200px);
+    overflow-y: auto;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  }
+
+  /* Toast notification */
+  #toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    max-width: 320px;
+    z-index: 1000;
+    transition: all 0.3s;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    opacity: 0;
+    transform: translateY(20px);
+    pointer-events: none;
+  }
+
+  #toast.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  #toast.positive { background: #166534; color: white; }
+  #toast.negative { background: #991b1b; color: white; }
+  #toast.neutral  { background: #1e40af; color: white; }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: rgba(0,0,0,0.05); border-radius: 10px; }
+  ::-webkit-scrollbar-thumb { background: rgba(37,99,235,0.3); border-radius: 10px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-title">🏢 PROPERTY TYCOON</div>
+    <div class="stats-bar">
+      <div class="stat-chip">💵 Cash: <span id="stat-cash">$50,000</span></div>
+      <div class="stat-chip income">📈 Monthly: <span id="stat-income">$0</span></div>
+      <div class="stat-chip">💎 Net Worth: <span id="stat-networth">$50,000</span></div>
+      <div class="stat-chip debt">💳 Debt: <span id="stat-debt">$0</span></div>
+      <div class="stat-chip">🏠 Properties: <span id="stat-props">0</span></div>
+      <div class="stat-chip">📅 Month: <span id="stat-month">1</span></div>
+    </div>
+    <button class="next-month-btn" onclick="nextMonth()">Next Month ▶</button>
+  </div>
+
+  <!-- MAIN LAYOUT -->
+  <div class="main-layout">
+
+    <!-- LEFT PANEL -->
+    <div class="left-panel">
+
+      <!-- MAP -->
+      <div class="panel">
+        <div class="panel-title">🗺️ City Map</div>
+        <div class="city-map" id="city-map"></div>
+        <div class="region-info" id="region-info"></div>
+      </div>
+
+      <!-- EVENT LOG -->
+      <div class="panel">
+        <div class="panel-title">📰 Event Log</div>
+        <div class="event-log" id="event-log"></div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="right-panel">
+
+      <!-- TABS -->
+      <div class="view-tabs">
+        <button class="tab-btn active" id="tab-market" onclick="setView('market')">🏪 Market</button>
+        <button class="tab-btn" id="tab-owned" onclick="setView('owned')">🏠 My Properties</button>
+        <button class="tab-btn" id="tab-all" onclick="setView('all')">🌍 All</button>
+      </div>
+
+      <!-- PROPERTIES -->
+      <div class="properties-container" id="properties-container">
+        <div class="property-grid" id="property-grid"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+// ─── DATA DEFINITIONS ───────────────────────────────────────────────────────
+
+const PROPERTY_TYPES = {
+  studio:    { name: 'Studio Apartment', basePrice: 25000,  baseRent: 400,  maintenance: 50,  emoji: '🏠' },
+  apartment: { name: 'Apartment',        basePrice: 45000,  baseRent: 650,  maintenance: 80,  emoji: '🏢' },
+  duplex:    { name: 'Duplex',           basePrice: 70000,  baseRent: 1000, maintenance: 120, emoji: '🏘️' },
+  retail:    { name: 'Small Retail',     basePrice: 85000,  baseRent: 1200, maintenance: 150, emoji: '🏪' },
+  office:    { name: 'Office Building',  basePrice: 150000, baseRent: 2200, maintenance: 300, emoji: '🏢' },
+  warehouse: { name: 'Warehouse',        basePrice: 120000, baseRent: 1600, maintenance: 200, emoji: '🏭' },
+  luxury:    { name: 'Luxury Condo',     basePrice: 200000, baseRent: 3000, maintenance: 400, emoji: '✨' }
+};
+
+const REGIONS = [
+  { id: 'downtown',    name: 'Downtown',          emoji: '🏙️', priceM: 1.5, rentM: 1.4, growth: 0.02, economy: 'Booming',    preferred: ['office','luxury','retail'] },
+  { id: 'suburbs',     name: 'Suburbs',           emoji: '🏘️', priceM: 1.0, rentM: 1.0, growth: 0.015,economy: 'Stable',     preferred: ['studio','apartment','duplex'] },
+  { id: 'industrial',  name: 'Industrial',        emoji: '🏭', priceM: 0.7, rentM: 0.8, growth: 0.01, economy: 'Growing',    preferred: ['studio','warehouse','apartment'] },
+  { id: 'waterfront',  name: 'Waterfront',        emoji: '🌊', priceM: 1.8, rentM: 1.6, growth: 0.025,economy: 'Booming',    preferred: ['luxury','office','retail'] },
+  { id: 'university',  name: 'University District',emoji: '🎓', priceM: 0.9, rentM: 1.1, growth: 0.01, economy: 'Stable',     preferred: ['studio','apartment','retail'] },
+  { id: 'oldtown',     name: 'Old Town',          emoji: '🏛️', priceM: 0.8, rentM: 0.9, growth: 0.03, economy: 'Developing', preferred: ['duplex','retail','office'] }
+];
+
+const EVENTS = [
+  { text: 'New subway line in Downtown! Downtown properties surge.', type: 'positive', effect: (s)=>{ s.playerProperties.filter(p=>p.regionId==='downtown').forEach(p=>p.value*=1.08); addEvent('New subway line in Downtown! Downtown +8% value.','positive'); } },
+  { text: 'University enrollment increases! University District booms.', type: 'positive', effect: (s)=>{ s.playerProperties.filter(p=>p.regionId==='university').forEach(p=>p.value*=1.05); addEvent('University enrollment up! University +5% value.','positive'); } },
+  { text: 'Waterfront development announced! Values skyrocket.', type: 'positive', effect: (s)=>{ s.playerProperties.filter(p=>p.regionId==='waterfront').forEach(p=>p.value*=1.10); addEvent('Waterfront development announced! Waterfront +10% value.','positive'); } },
+  { text: 'Government tax break for property owners!', type: 'positive', effect: (s)=>{ const bonus=500*s.playerProperties.length; s.cash+=bonus; addEvent(`Government tax break! +$${fmt(bonus)} cash.`,'positive'); } },
+  { text: 'Tourism boom! Extra income this month.', type: 'positive', effect: (s)=>{ const bonus=Math.round(0.3*calcMonthlyIncome(s)); s.cash+=bonus; addEvent(`Tourism boom! +$${fmt(bonus)} extra income.`,'positive'); } },
+  { text: 'Factory closure hits Industrial district.', type: 'negative', effect: (s)=>{ s.playerProperties.filter(p=>p.regionId==='industrial').forEach(p=>p.value*=0.95); addEvent('Factory closure! Industrial −5% value.','negative'); } },
+  { text: 'Economic downturn! Revenue drops.', type: 'negative', effect: (s)=>{ const loss=Math.round(0.2*calcMonthlyIncome(s)); s.cash-=loss; addEvent(`Economic downturn! −$${fmt(loss)} income.`,'negative'); } },
+  { text: 'City-wide tax increase announced.', type: 'negative', effect: (s)=>{ const loss=200*s.playerProperties.length; s.cash-=loss; addEvent(`City-wide tax increase! −$${fmt(loss)} cash.`,'negative'); } },
+  { text: 'Unexpected repairs needed across properties!', type: 'negative', effect: (s)=>{ if(s.playerProperties.length>0){s.cash-=2000; addEvent('Unexpected repairs! −$2,000 cash.','negative');} } }
+];
+
+// ─── GAME STATE ──────────────────────────────────────────────────────────────
+
+let state = {
+  cash: 50000,
+  month: 1,
+  debt: 0,
+  playerProperties: [],
+  marketProperties: [],
+  eventLog: [],
+  selectedRegion: null,
+  currentView: 'market',
+  nextId: 1,
+  marketRefreshCounter: 0
+};
+
+// ─── UTILITY ─────────────────────────────────────────────────────────────────
+
+function fmt(n) { return n.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0}); }
+function fmtMoney(n) { return (n<0?'-':'')+'$'+fmt(Math.abs(Math.round(n))); }
+function rand(min, max) { return Math.random()*(max-min)+min; }
+function randInt(min, max) { return Math.floor(rand(min, max+1)); }
+function chance(p) { return Math.random() < p; }
+
+function getRegion(id) { return REGIONS.find(r=>r.id===id); }
+function getType(id) { return PROPERTY_TYPES[id]; }
+
+function calcConditionMult(cond) { return cond * 0.2 + 0.4; }  // 1→0.6, 2→0.8, 3→1.0
+function calcUpgradeMult(ups) { return 1 + us * 0.15; }
+
+function calcRent(p) {
+  const t = getType(p.typeId);
+  const r = getRegion(p.regionId);
+  const condM = p.condition * 0.2 + 0.4;
+  const upM   = 1 + p.upgrades * 0.15;
+  return Math.round(t.baseRent * r.rentM * condM * upM);
+}
+
+function calcMaintenance(p) {
+  const t = getType(p.typeId);
+  return Math.round(t.maintenance * (p.upgrades + 1));
+}
+
+function calcMonthlyIncome(s) {
+  const totalRent = s.playerProperties.reduce((acc,p)=>acc+calcRent(p),0);
+  const totalMaint= s.playerProperties.reduce((acc,p)=>acc+calcMaintenance(p),0);
+  const debtPayment = s.debt * 0.005;
+  return totalRent - totalMaint - debtPayment;
+}
+
+function calcNetWorth(s) {
+  return s.cash + s.playerProperties.reduce((a,p)=>a+p.value,0) - s.debt;
+}
+
+// ─── MARKET GENERATION ───────────────────────────────────────────────────────
+
+function generatePropertyForRegion(region) {
+  const types = Object.keys(PROPERTY_TYPES);
+  let typeId;
+  if (chance(0.7) && region.preferred.length > 0) {
+    typeId = region.preferred[randInt(0, region.preferred.length-1)];
+  } else {
+    typeId = types[randInt(0, types.length-1)];
+  }
+  const t = getType(typeId);
+  const priceMult = rand(0.85, 1.15);
+  const baseValue = Math.round(t.basePrice * region.priceM * priceMult);
+
+  return {
+    id: state.nextId++,
+    typeId,
+    regionId: region.id,
+    value: baseValue,
+    price: baseValue,
+    condition: 3,
+    upgrades: 0,
+    owned: false
+  };
+}
+
+function generateMarketProperties() {
+  state.marketProperties = [];
+  REGIONS.forEach(region => {
+    const count = randInt(2, 4);
+    for (let i = 0; i < count; i++) {
+      state.marketProperties.push(generatePropertyForRegion(region));
+    }
+  });
+}
+
+// ─── REGION MAP ──────────────────────────────────────────────────────────────
+
+function renderMap() {
+  const container = document.getElementById('city-map');
+  container.innerHTML = '';
+  REGIONS.forEach(r => {
+    const economyClass = r.economy.toLowerCase();
+    const isSelected = state.selectedRegion === r.id;
+    const div = document.createElement('div');
+    div.className = `region-cell ${economyClass} ${isSelected?'selected':''}`;
+    div.innerHTML = `<span class="region-emoji">${r.emoji}</span><span class="region-name">${r.name}</span>`;
+    div.onclick = () => selectRegion(r.id);
+    container.appendChild(div);
+  });
+
+  const infoDiv = document.getElementById('region-info');
+  if (state.selectedRegion) {
+    const r = getRegion(state.selectedRegion);
+    infoDiv.className = 'region-info visible';
+    infoDiv.innerHTML = `
+      <div class="region-info-title">${r.emoji} ${r.name}</div>
+      <div class="region-info-row">Economy: <strong>${r.economy}</strong></div>
+      <div class="region-info-row">Price: <strong>${r.priceM}x</strong> &nbsp; Rent: <strong>${r.rentM}x</strong></div>
+      <div class="region-info-row">Monthly Growth: <strong>${(r.growth*100).toFixed(1)}%</strong></div>
+      <div class="region-info-row">Preferred: <strong>${r.preferred.map(p=>PROPERTY_TYPES[p].name).join(', ')}</strong></div>
+    `;
+  } else {
+    infoDiv.className = 'region-info';
+  }
+}
+
+function selectRegion(id) {
+  if (state.selectedRegion === id) {
+    state.selectedRegion = null;
+  } else {
+    state.selectedRegion = id;
+  }
+  renderMap();
+  updatePropertyDisplay();
+}
+
+// ─── UI UPDATES ──────────────────────────────────────────────────────────────
+
+function updateUI() {
+  const income = calcMonthlyIncome(state);
+  const netWorth = calcNetWorth(state);
+
+  document.getElementById('stat-cash').textContent    = fmtMoney(state.cash);
+  document.getElementById('stat-income').textContent  = fmtMoney(income);
+  document.getElementById('stat-networth').textContent= fmtMoney(netWorth);
+  document.getElementById('stat-debt').textContent    = fmtMoney(state.debt);
+  document.getElementById('stat-props').textContent   = state.playerProperties.length;
+  document.getElementById('stat-month').textContent   = state.month;
+
+  document.getElementById('stat-income').style.color = income >= 0 ? '#16a34a' : '#dc2626';
+}
+
+function setView(v) {
+  state.currentView = v;
+  ['market','owned','all'].forEach(id=>{
+    const btn = document.getElementById('tab-'+id);
+    btn.className = 'tab-btn' + (id===v?' active':'');
+  });
+  updatePropertyDisplay();
+}
+
+function updatePropertyDisplay() {
+  const grid = document.getElementById('property-grid');
+  grid.innerHTML = '';
+
+  let props = [];
+
+  if (state.currentView === 'market') {
+    props = state.marketProperties.map(p=>({...p, _isMarket:true}));
+  } else if (state.currentView === 'owned') {
+    props = state.playerProperties.map(p=>({...p, _isMarket:false}));
+  } else {
+    props = [
+      ...state.marketProperties.map(p=>({...p, _isMarket:true})),
+      ...state.playerProperties.map(p=>({...p, _isMarket:false}))
+    ];
+  }
+
+  if (state.selectedRegion) {
+    props = props.filter(p => p.regionId === state.selectedRegion);
+  }
+
+  if (props.length === 0) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="icon">🏙️</div>No properties found.</div>`;
+    return;
+  }
+
+  props.forEach(p => {
+    const t = getType(p.typeId);
+    const r = getRegion(p.regionId);
+    const rent = calcRent(p);
+    const maint = calcMaintenance(p);
+    const netRent = rent - maint;
+    const stars = '★'.repeat(p.condition) + '☆'.repeat(3-p.condition);
+    const upgradeCost = Math.round(p.value * 0.15);
+    const downPayment = Math.round(p.price * 0.2);
+
+    const canBuyCash  = state.cash >= p.price;
+    const canBuyMort  = state.cash >= downPayment;
+    const canUpgrade  = state.cash >= upgradeCost;
+
+    const card = document.createElement('div');
+    card.className = 'prop-card' + (!p._isMarket ? ' mine' : '');
+
+    let actionsHtml = '';
+    let tooltipHtml = '';
+
+    if (p._isMarket) {
+      const cashDisabled = canBuyCash ? '' : 'disabled';
+      const mortDisabled = canBuyMort ? '' : 'disabled';
+      const shortCash   = canBuyCash ? '' : `Need ${fmtMoney(p.price - state.cash)} more`;
+      const shortMort   = canBuyMort ? '' : `Need ${fmtMoney(downPayment - state.cash)} more`;
+
+      actionsHtml = `
+        <button class="btn btn-buy" onclick="buyProperty(${p.id},false)" ${cashDisabled}>Buy Cash</button>
+        <button class="btn btn-mortgage" onclick="buyProperty(${p.id},true)" ${mortDisabled}>Mortgage</button>
+      `;
+      if (!canBuyCash || !canBuyMort) {
+        const tip = !canBuyCash ? shortCash : (shortMort||'');
+        tooltipHtml = `<div class="btn-tooltip">${tip}</div>`;
+      }
+    } else {
+      const upDisabled = canUpgrade ? '' : 'disabled';
+      const shortUp    = canUpgrade ? '' : `Need ${fmtMoney(upgradeCost - state.cash)} more`;
+      actionsHtml = `
+        <button class="btn btn-upgrade" onclick="upgradeProperty(${p.id})" ${upDisabled}>⬆ Upgrade ${fmtMoney(upgradeCost)}</button>
+        <button class="btn btn-sell" onclick="sellProperty(${p.id})">💰 Sell</button>
+      `;
+      if (!canUpgrade) tooltipHtml = `<div class="btn-tooltip">${shortUp}</div>`;
+    }
+
+    card.innerHTML = `
+      <div class="prop-card-header">
+        <div class="prop-emoji">${t.emoji}</div>
+        <div class="prop-info">
+          <div class="prop-type">${t.name} ${p.upgrades>0?`<span class="prop-upgrade-badge">+${p.upgrades} Upgrades</span>`:''}</div>
+          <div class="prop-region">${r.emoji} ${r.name} · ${r.economy}</div>
+          <div class="prop-condition">${stars}</div>
+        </div>
+      </div>
+      <div class="prop-stats">
+        <div class="prop-stat">
+          <div class="prop-stat-label">${p._isMarket?'Price':'Value'}</div>
+          <div class="prop-stat-value blue">${fmtMoney(p._isMarket?p.price:p.value)}</div>
+        </div>
+        <div class="prop-stat">
+          <div class="prop-stat-label">Est. Monthly</div>
+          <div class="prop-stat-value ${netRent>=0?'green':'red'}">${fmtMoney(netRent)}/mo</div>
+        </div>
+        <div class="prop-stat">
+          <div class="prop-stat-label">Rent</div>
+          <div class="prop-stat-value green">${fmtMoney(rent)}</div>
+        </div>
+        <div class="prop-stat">
+          <div class="prop-stat-label">Maintenance</div>
+          <div class="prop-stat-value red">${fmtMoney(maint)}</div>
+        </div>
+        ${p._isMarket?`<div class="prop-stat">
+          <div class="prop-stat-label">Down (20%)</div>
+          <div class="prop-stat-value">${fmtMoney(Math.round(p.price*0.2))}</div>
+        </div>`:''}
+      </div>
+      <div class="prop-actions">${actionsHtml}</div>
+      ${tooltipHtml}
+    `;
+
+    grid.appendChild(card);
+  });
+}
+
+// ─── ACTIONS ─────────────────────────────────────────────────────────────────
+
+function buyProperty(id, withMortgage) {
+  const idx = state.marketProperties.findIndex(p=>p.id===id);
+  if (idx === -1) return;
+
+  const prop = state.marketProperties[idx];
+  const downPayment = Math.round(prop.price * 0.2);
+  const mortgageAmount = prop.price - downPayment;
+
+  if (withMortgage) {
+    if (state.cash < downPayment) { showToast('Not enough cash for down payment!','negative'); return; }
+    state.cash -= downPayment;
+    state.debt += mortgageAmount;
+    showToast(`Purchased ${getType(prop.typeId).name} in ${getRegion(prop.regionId).name} with mortgage. Down: ${fmtMoney(downPayment)}`, 'positive');
+    addEvent(`Month ${state.month}: Bought ${getType(prop.typeId).name} in ${getRegion(prop.regionId).name} via mortgage.`, 'neutral');
+  } else {
+    if (state.cash < prop.price) { showToast('Not enough cash!','negative'); return; }
+    state.cash -= prop.price;
+    showToast(`Purchased ${getType(prop.typeId).name} in ${getRegion(prop.regionId).name} for ${fmtMoney(prop.price)}`, 'positive');
+    addEvent(`Month ${state.month}: Bought ${getType(prop.typeId).name} in ${getRegion(prop.regionId).name} for ${fmtMoney(prop.price)}.`, 'neutral');
+  }
+
+  const owned = {...prop, owned: true, _isMarket: false};
+  state.playerProperties.push(owned);
+  state.marketProperties.splice(idx, 1);
+
+  updateUI();
+  updatePropertyDisplay();
+}
+
+function sellProperty(id) {
+  const idx = state.playerProperties.findIndex(p=>p.id===id);
+  if (idx === -1) return;
+
+  const prop = state.playerProperties[idx];
+  const salePct = rand(0.85, 0.95);
+  const salePrice = Math.round(prop.value * salePct);
+
+  state.cash += salePrice;
+  state.playerProperties.splice(idx, 1);
+
+  showToast(`Sold ${getType(prop.typeId).name} for ${fmtMoney(salePrice)} (${Math.round(salePct*100)}% of value)`, 'positive');
+  addEvent(`Month ${state.month}: Sold ${getType(prop.typeId).name} in ${getRegion(prop.regionId).name} for ${fmtMoney(salePrice)}.`, 'neutral');
+
+  updateUI();
+  updatePropertyDisplay();
+}
+
+function upgradeProperty(id) {
+  const prop = state.playerProperties.find(p=>p.id===id);
+  if (!prop) return;
+
+  const cost = Math.round(prop.value * 0.15);
+  if (state.cash < cost) { showToast('Not enough cash to upgrade!','negative'); return; }
+
+  state.cash -= cost;
+  prop.value = Math.round(prop.value * 1.10);
+  prop.upgrades++;
+
+  showToast(`Upgraded ${getType(prop.typeId).name}! Value +10%, Rent +15%`, 'positive');
+  addEvent(`Month ${state.month}: Upgraded ${getType(prop.typeId).name} in ${getRegion(prop.regionId).name}.`, 'neutral');
+
+  updateUI();
+  updatePropertyDisplay();
+}
+
+// ─── MONTHLY CYCLE ───────────────────────────────────────────────────────────
+
+function nextMonth() {
+  // 1. Calculate net income
+  const totalRent  = state.playerProperties.reduce((a,p)=>a+calcRent(p),0);
+  const totalMaint = state.playerProperties.reduce((a,p)=>a+calcMaintenance(p),0);
+  const debtPayment= Math.round(state.debt * 0.005);
+  const netIncome  = totalRent - totalMaint - debtPayment;
+
+  state.cash += netIncome;
+
+  // 2. Regional appreciation
+  state.playerProperties.forEach(p => {
+    const r = getRegion(p.regionId);
+    if (chance(r.growth)) {
+      p.value = Math.round(p.value * 1.02);
+    }
+  });
+
+  // 3. Condition degradation
+  state.playerProperties.forEach(p => {
+    if (chance(0.1) && p.condition > 1) {
+      p.condition--;
+    }
+  });
+
+  // 4. Random event
+  if (chance(0.30)) {
+    triggerRandomEvent();
+  }
+
+  // 5. Auto debt paydown
+  if (netIncome > 0 && state.debt > 0) {
+    const paydown = Math.round(netIncome * 0.1);
+    state.debt = Math.max(0, state.debt - paydown);
+  }
+
+  // 6. Market refresh every 3 months
+  state.marketRefreshCounter++;
+  if (state.marketRefreshCounter >= 3) {
+    state.marketRefreshCounter = 0;
+    generateMarketProperties();
+    addEvent(`Month ${state.month}: Market refreshed with new properties.`, 'neutral');
+  }
+
+  state.month++;
+
+  if (netIncome !== 0) {
+    addEvent(
+      `Month ${state.month-1}: Net income ${fmtMoney(netIncome)} (Rent ${fmtMoney(totalRent)} − Maint ${fmtMoney(totalMaint)} − Debt ${fmtMoney(debtPayment)}).`,
+      netIncome >= 0 ? 'positive' : 'negative'
+    );
+  }
+
+  updateUI();
+  updatePropertyDisplay();
+}
+
+function triggerRandomEvent() {
+  const event = EVENTS[randInt(0, EVENTS.length-1)];
+  event.effect(state);
+}
+
+// ─── EVENT LOG ───────────────────────────────────────────────────────────────
+
+function addEvent(text, type) {
+  state.eventLog.unshift({ text, type });
+  if (state.eventLog.length > 15) state.eventLog.pop();
+  renderEventLog();
+}
+
+function renderEventLog() {
+  const container = document.getElementById('event-log');
+  if (state.eventLog.length === 0) {
+    container.innerHTML = '<div style="color:#94a3b8;font-size:0.75rem;text-align:center;padding:10px;">No events yet...</div>';
+    return;
+  }
+  container.innerHTML = state.eventLog.map(e =>
+    `<div class="event-entry ${e.type}">${e.text}</div>`
+  ).join('');
+}
+
+// ─── TOAST ───────────────────────────────────────────────────────────────────
+
+let toastTimer = null;
+function showToast(msg, type) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `show ${type}`;
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{ el.className = type; }, 3200);
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+
+function initGame() {
+  generateMarketProperties();
+  renderMap();
+  renderEventLog();
+  updateUI();
+  updatePropertyDisplay();
+  addEvent('Month 1: Welcome to Property Tycoon! You have $50,000 to start your empire.', 'neutral');
+}
+
+initGame();
+</script>
+</body>
+</html>
